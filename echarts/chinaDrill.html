@@ -23,13 +23,12 @@
         async function initChart() {
             let chart = echarts.init(document.getElementById('main'));
             let alladcode = await getGeoJson('all.json')
-            console.log(alladcode)
-            $.get(publicUrl + '100000_full.json', chinaGeoJson => {
-                initEcharts(chinaGeoJson, '全国', chart, alladcode)
-            })
+            let chinaGeoJson = await getGeoJson('100000_full.json')
+            initEcharts(chinaGeoJson, '全国', chart, alladcode)
         }
         initChart();
 
+        //echarts绘图
         function initEcharts(geoJson, name, chart, alladcode) {
             echarts.registerMap(name, geoJson);
             let option = {
@@ -53,14 +52,14 @@
                 let clickRegionCode = alladcode.filter(areaJson => areaJson.name === params.name)[0].adcode;
                 getGeoJson(clickRegionCode + '_full.json').then(regionGeoJson => initEcharts(regionGeoJson, params.name, chart, alladcode))
                     .catch(err => {
-                        $.get(publicUrl + '100000_full.json', chinaGeoJson => {
-                            initEcharts(chinaGeoJson, '全国', chart, alladcode)
-                        })
+                        getGeoJson('100000_full.json').then(
+                            chinaGeoJson=>initEcharts(chinaGeoJson, '全国', chart, alladcode)   
+                        )
+                              
                     })
             })
-
         }
-
+        //获取地图json数据
         async function getGeoJson(jsonName) {
             return await $.get(publicUrl + jsonName)
         }
