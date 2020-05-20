@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地图下钻</title>
+    <style>
+        #main {
+            height: 100vh;
+            width: 100vw;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main"></div>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/4.7.0/echarts.min.js"></script>
+    <script>
+        let publicUrl = 'https://geo.datav.aliyun.com/areas_v2/bound/';
+
+        async function initChart() {
+            let chart = echarts.init(document.getElementById('main'));
+            let alladcode = await getGeoJson('all.json')
+            console.log(alladcode)
+            $.get(publicUrl + '100000_full.json', chinaGeoJson => {
+                initEcharts(chinaGeoJson, '全国', chart, alladcode)
+            })
+        }
+        initChart();
+
+        function initEcharts(geoJson, name, chart, alladcode) {
+            echarts.registerMap(name, geoJson);
+            let option = {
+                title: {
+                    text: name,
+                    left: 'center'
+                },
+                series: [{
+                    type: 'map',
+                    map: name,
+                    itemStyle: {
+                        areaColor: '#1890ff'
+                    }
+                }]
+            }
+            chart.setOption(option)
+            // 解绑click事件
+            chart.off("click");
+            //给地图添加监听事件
+            chart.on('click', params => {
+                let clickRegionCode = alladcode.filter(areaJson => areaJson.name === params.name)[0].adcode;
+                getGeoJson(clickRegionCode + '_full.json').then(regionGeoJson => initEcharts(regionGeoJson, params.name, chart, alladcode))
+                    .catch(err => {
+                        $.get(publicUrl + '100000_full.json', chinaGeoJson => {
+                            initEcharts(chinaGeoJson, '全国', chart, alladcode)
+                        })
+                    })
+            })
+
+        }
+
+        async function getGeoJson(jsonName) {
+            return await $.get(publicUrl + jsonName)
+        }
+    </script>
+</body>
+
+</html>
