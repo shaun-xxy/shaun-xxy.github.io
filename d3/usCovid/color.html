@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <script>
+        const width = document.body.clientWidth;
+        const height = document.body.clientHeight;
+        const margin = {
+            top: 60,
+            left: 60,
+            bottom: 400,
+            right: 100
+        }
+        let svg = d3.select('body')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .attr('viewBox', [0, 0, 975, 610]);
+
+        async function drawUSA() {
+            let us = await d3.json('./us.json');
+            let usCovids = await d3.csv('./us-counties.csv');
+
+            const path = d3.geoPath();
+            const delay = d3.scaleTime()
+                .domain([new Date(usCovids[0].date), new Date(usCovids[usCovids.length - 1].date)])
+                .range([0, 50000]);
+
+            let max = d3.max(usCovids.filter(d => d.fips), d => +d.cases)
+            max = Math.ceil(max / 1000) * 1000
+            const color = d3.scaleSqrt().nice()
+                .domain([1, max])
+                .range([d3.interpolateReds(0.1), d3.interpolateReds(1)])
+                .interpolate(d3.interpolateHcl)
+            const orginColor = d3.interpolateReds(0)
+            //图例
+            const x = d3.scaleLinear().domain([0, max]).range([0, 240])
+
+            const xAxis = d3.axisTop(x).tickSize(0).tickFormat(d3.format("~s"))
+
+            let legend = svg.append('g').attr('class', 'legend')
+            .attr("transform", "translate(400,20)")
+
+            legend.selectAll('rect')
+                .data(d3.pairs(x.ticks(10)))
+                .join('rect')
+                .attr('height', 10)
+                .attr('x', d => x(d[0]))
+                .attr('width', d => x(d[1]) - x(d[0]))
+                .attr('fill', d => color(d[0]))
+
+
+            legend.append('g')
+                .attr('class', 'legend')
+                .call(xAxis)
+                .call(g => g.select('.domain').remove())
+
+            // 数据排序由远到近
+            usCovids.sort((a, b) => new Date(a.date) - new Date(b.date))
+            let countiesRegion = svg.append('g')
+                .attr('class', 'land')
+                .selectAll('path')
+                .data(topojson.feature(us, us.objects.counties).features)
+                .join('path')
+                .attr("d", path)
+                .attr("fill", orginColor)
+                .style('stroke', '#888')
+                .style('stroke-width', '0.1')
+
+            svg.append("g")
+                .attr("class", "border")
+                .append("path")
+                .datum(topojson.mesh(us, us.objects.states, (a, b) => a !== b))
+                .attr("fill", "none")
+                .attr("stroke", "#777")
+                .attr("stroke-width", '0.5')
+                .attr("stroke-linejoin", "round")
+                .attr("d", path);
+
+            let dateLabel = svg.append("g")
+                .attr("class", "date")
+                .attr("transform", "translate(600,100)")
+
+            let nestCovids = d3.nest().key(t => t["date"]).entries(usCovids)
+
+            for (let nestCovid of nestCovids) {
+                let date = nestCovid.key;
+                let dateData = nestCovid.values;
+                d3.timeout(() => {
+                    countiesRegion
+                        .style('fill', function (d) {
+                            let countiesCases = dateData.filter(item => item.fips === d.id);
+                            return countiesCases.length === 0 ? orginColor : d3.select(this).style(
+                                'fill');
+                        })
+                        .transition()
+                        .style('fill', d => {
+                            let countiesCases = dateData.filter(item => item.fips === d.id);
+                            return countiesCases.length === 0 ? orginColor : color(+countiesCases[0]
+                                .cases);
+                        })
+
+                    dateLabel.selectAll('text')
+                        .data([date])
+                        .join('text')
+                        .transition()
+                        .text(date)
+                        .style('font-size', '40')
+                        .style('font-weight', 'bold')
+
+
+                }, delay(new Date(date)))
+            }
+        }
+        drawUSA()
+    </script>
+</body>
+
+</html>

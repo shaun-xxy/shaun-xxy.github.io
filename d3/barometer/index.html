@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新冠肺炎疫情晴雨表</title>
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script>
+    let date = {
+      //中文-月日转换成数字格式 例如'1月15日'转换成'2020/1/15'
+      formatEN: time => {
+        return new Date('2020/' + time.replace(/月/, '/').replace(/日/, ''));
+      },
+      //转换成中文'月日'形式
+      formatCN: time => {
+        return [time.getMonth() + 1 + "月", time.getDate() + "日"].join("")
+      },
+      //月日转换成小数点形式
+      formatPoint: time => {
+        return [time.getMonth() + 1 + ".", time.getDate()].join("")
+      },
+      getDays: data => {
+        let startDay = d3.min(data, d => date.formatEN(d['公开时间']).getTime())
+        let endDay = d3.max(data, d => date.formatEN(d['公开时间']).getTime())
+        let totalDays = (endDay - startDay) / 864e5 + 1
+        return {
+          startDay,
+          endDay,
+          totalDays
+        }
+      }
+
+    }
+
+    let utils = {
+      parseToInt: function (num) {
+        return "" === num ? 0 : parseInt(num)
+      }
+    }
+    //请求数据
+    d3.csv('https://vis.ucloud365.com/ncov/data/map.csv').then(data => {
+      let allHieData = d3.nest().key(t => t["类别"]).map(data);
+      let province = d3.nest().key(t => t["省份"]).key(t => t["公开时间"]).map(allHieData["$省级"]);
+      
+      //晴雨表中间数据
+      let barometerDate = {};
+      //画图数据，长度等于省级的数量
+      let mapData = [];
+      let xLabel = [];
+      let provinceList = [];
+      barometerDate = date.getDays(data);
+      for (i = 0; i < barometerDate.totalDays; i++) {
+        let day = new Date(barometerDate.startDay + 864e5 * i);
+        xLabel.push(date.formatPoint(day))
+      }
+     
+      Object.keys(province).forEach(d => {
+        let data = [];
+        let preInc = 0;
+        let incArr = [];
+        for (i = 0; i < barometerDate.totalDays; i++) {
+          let day = new Date(barometerDate.startDay + 864e5 * i);
+          let dayCN = date.formatCN(day)
+          let dayData = province[d]['$' + dayCN]
+          let inc = dayData ? utils.parseToInt(dayData[0]['新增确诊病例']) : 0;
+          let change = inc - preInc;
+          incArr.push(inc)
+          preInc = inc
+          data.push({
+            day,
+            inc,
+            change
+          })
+        }
+        d.slice(1)!=='湖北' && provinceList.push(d.slice(1))
+        d.slice(1)!=='湖北' && mapData.push({
+          data,
+          province: d.slice(1),
+          max:d3.max(incArr)
+        });
+      })
+      //边距
+      const margin = ({
+        top: 40,
+        right: 0,
+        bottom: 20,
+        left: 10
+      })
+
+      //矩形边长
+      const rectHeight = 48;
+      const padding = 20;
+      const totalDays = barometerDate.totalDays
+      const width = rectHeight * totalDays;
+      const height = (rectHeight + padding) * mapData.length;
+
+      const incColor = 'rgb(244, 128, 106)';
+      const decColor = 'rgb(120, 206, 106)';
+      const color ='rgb(252, 194, 101)';
+ 
+      const x = d3.scaleBand()
+        .domain(xLabel)
+        .range([margin.left, width - margin.right])
+        .paddingInner(0.1)
+        .paddingOuter(0.2)
+
+      const y = d3.scaleBand()
+        .domain(mapData.map(d => d.province))
+        .range([margin.top, height - margin.bottom])
+        .paddingInner(0.2)
+
+      const r = d3.scaleLinear()
+        .domain([1,d3.max(mapData.map(d=>d.max))])
+        .rangeRound([5*5,Math.pow(x.bandwidth(),2)])
+
+      //添加画布
+      const svg = d3.select('body')
+        .append('svg')
+        .attr("width", width)
+        .attr("height", height)
+        .attr("viewBox", [0, 0, width + margin.left + margin.right, height + margin.top + margin.bottom])
+
+      svg.append('g')
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y)
+          .tickValues(mapData.map(d => d.province))
+          .tickSize(0))
+        .call(g => g.select(".domain").remove())
+        .call(g => g.selectAll("text").style("font-size", "14").style("font-weight",'bold'))
+
+      svg.append('g')
+        .attr("transform", `translate(0,${margin.top})`)
+        .call(d3.axisTop(x).tickSize(10))
+        .call(g => g.select(".domain").remove())
+        .call(g => g.selectAll("text").style("font-size", "14"))
+
+      let prov = svg.append('g')
+        .selectAll('g')
+        .data(mapData)
+        .join('g')
+        .attr('class', 'prov')
+
+      prov.each(function(d,i){
+        d3.select(this)
+        .append('g')
+        .selectAll('rect')
+        .data(d => d.data)
+        .join('rect')
+        .attr('width', x.bandwidth())
+        .attr('height', x.bandwidth())
+        .attr('x', (t, n) => x(xLabel[n]))
+        .attr('y', y(provinceList[i]))
+        .attr('fill', '#eee')
+
+        d3.select(this)
+        .append('g')
+        .selectAll('rect')
+        .data(d => d.data)
+        .join('rect')
+        .attr('width', t=>{
+          return t.inc === 0? 0:Math.sqrt(r(t.inc))
+        })
+        .attr('height', t=>{
+          return t.inc === 0? 0:Math.sqrt(r(t.inc))
+        })
+        .attr('x', (t, n) => x(xLabel[n]))
+        .attr('y', y(provinceList[i]))
+        .attr('fill', t=>t.change>0?incColor:t.change<0?decColor:color)
+        .attr("transform", t=>{
+          let innerR = Math.sqrt(r(t.inc))
+          let outerR =  x.bandwidth()
+          return t.inc === 0?'':`translate(${(outerR-innerR)/2},${(outerR-innerR)/2})`
+        })
+
+        d3.select(this)
+        .append('g')
+        .selectAll('text')
+        .data(d=>d.data)
+        .join('text')
+        .attr('x', (t, n) => x(xLabel[n]))
+        .attr('y', y(provinceList[i]))
+        .attr('dx',x.bandwidth()/2)
+        .attr('dy',y.bandwidth())
+        .text(t=>t.inc)
+        .attr('text-anchor','middle')
+        .style("font-size", "10")
+
+      })
+    })
+  </script>
+</body>
+
+</html>

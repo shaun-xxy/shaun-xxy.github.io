@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>南丁格尔玫瑰图</title>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            width: 100vw;
+            height: 150vh;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script>
+        //数据
+        const data = [{
+                name: '意大利',
+                value: 10283,
+                death: 631
+            }, {
+                name: '伊朗',
+                value: 8042,
+                death: 291
+            },
+            {
+                name: '韩国',
+                value: 7755,
+                death: 61
+            },
+            {
+                name: '法国',
+                value: 1784,
+                death: 33
+            },
+            {
+                name: '西班牙',
+                value: 1695,
+                death: 35
+            },
+            {
+                name: '德国',
+                value: 1524,
+                death: 2
+            },
+            {
+                name: '美国',
+                value: 1004,
+                death: 31
+            },
+            {
+                name: '钻石',
+                value: 696,
+                death: 7
+            },
+            {
+                name: '日本',
+                value: 582,
+                death: 12
+            },
+            {
+                name: '瑞士',
+                value: 475,
+                death: 3
+            },
+            {
+                name: '荷兰',
+                value: 382,
+                death: 4
+            },
+            {
+                name: '英国',
+                value: 373,
+                death: 6
+            },
+            {
+                name: '瑞典',
+                value: 355,
+                death: 0
+            },
+            {
+                name: '挪威',
+                value: 277,
+                death: 0
+            },
+            {
+                name: '比利时',
+                value: 267,
+                death: 0
+            },
+            {
+                name: '丹麦',
+                value: 262,
+                death: 0
+            },
+            {
+                name: '奥地利',
+                value: 182,
+                death: 0
+            },
+            {
+                name: '新加坡',
+                value: 166,
+                death: 0
+            },
+            {
+                name: '马来西亚',
+                value: 129,
+                death: 0
+            },
+            {
+                name: '澳大利亚',
+                value: 117,
+                death: 3
+            },
+            {
+                name: '巴林',
+                value: 109,
+                death: 0
+            },
+            {
+                name: '加拿大',
+                value: 93,
+                death: 1
+            },
+            {
+                name: '希腊',
+                value: 89,
+                death: 0
+            },
+            {
+                name: '以色列',
+                value: 75,
+                death: 0
+            },
+            {
+                name: '阿联酋',
+                value: 74,
+                death: 0
+            },
+            {
+                name: '伊拉克',
+                value: 71,
+                death: 7
+            },
+            {
+                name: '冰岛、科威特',
+                value: 69,
+                death: 0
+            },
+            {
+                name: '圣马力诺',
+                value: 62,
+                death: 2
+            },
+            {
+                name: '印度、捷克',
+                value: 61,
+                death: 0
+            },
+            {
+                name: '埃及',
+                value: 59,
+                death: 1
+            },
+            {
+                name: '泰国',
+                value: 53,
+                death: 1
+            },
+            {
+                name: '黎巴嫩',
+                value: 52,
+                death: 1
+            },
+            {
+                name: '芬兰',
+                value: 40,
+                death: 0
+            },
+            {
+                name: '菲律宾',
+                value: 35,
+                death: 1
+            },
+            {
+                name: '越南、巴西、爱尔兰',
+                value: 34,
+                death: 0
+            },
+            {
+                name: '斯洛文巴尼亚',
+                value: 31,
+                death: 0
+            },
+            {
+                name: '葡萄牙、巴勒斯坦',
+                value: 30,
+                death: 0
+            },
+            {
+                name: '罗马尼亚',
+                value: 28,
+                death: 0
+            },
+            {
+                name: '印度尼西亚',
+                value: 27,
+                death: 0
+            },
+            {
+                name: '卡塔尔',
+                value: 24,
+                death: 0
+            },
+            {
+                name: '格鲁尼亚',
+                value: 23,
+                death: 0
+            },
+            {
+                name: '波兰',
+                value: 22,
+                death: 0
+            },
+            {
+                name: '葡萄牙、巴勒斯坦',
+                value: 30,
+                death: 0
+            },
+            {
+                name: '沙特阿拉伯',
+                value: 21,
+                death: 0
+            },
+            {
+                name: '（含）以下',
+                value: 20,
+                death: 0
+            }
+        ].sort((a, b) => a.value - b.value)
+
+        //颜色数组
+        let rainbow = d3.scaleDiverging(d3.interpolateSpectral);
+
+        //获取body标签可见区域的大小
+        const width = document.body.clientWidth;
+        const height = document.body.clientHeight;
+
+        //添加画布，大小占满body
+        const svg = d3.select('body')
+            .append('svg')
+            .attr("width", width)
+            .attr("height", height);
+        let g = svg.append('g').attr("transform", "translate(" + width / 2 + "," + height * 0.6 + ")");
+
+        // 设置内外半径
+        let outerRadius = d3.min([width, height]) * 0.6;
+        let innerRadius = 30;
+
+        // 设置比例尺 
+        let x = d3.scaleBand().range([0, 2 * Math.PI]).domain(data.map(d => d.name))
+        let y = d3.scaleLog().domain([d3.min(data, d => d.value), d3.max(data, d => d.value)]).range([innerRadius + 100,
+            outerRadius
+        ])
+
+        // 绘制弧
+        g.selectAll('path')
+            .data(data)
+            .enter()
+            .append('path')
+            .attr('fill', function (d, i) {
+                return rainbow((data.length - i) / data.length)
+            })
+            .attr('d', d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(d => y(d.value))
+                .startAngle(d => x(d.name))
+                .endAngle(d => x(d.name) + x.bandwidth())
+            )
+
+        //添加标签
+        g.append('g')
+            .selectAll('text')
+            .data(data)
+            .enter()
+            .append('text')
+            .attr('x', (d, i) => {
+                let r = y(d.value)
+                r = (i <= 26) ? r + 10 : r - 30
+                let endAngle = x(d.name) + x.bandwidth() / 2
+                return r * Math.sin(endAngle)
+            })
+            .attr('y', (d, i) => {
+                let r = y(d.value)
+                r = (i <= 26) ? r + 10 : r - 30
+                let endAngle = x(d.name) + x.bandwidth() / 2
+                return -r * Math.cos(endAngle)
+            })
+            .attr('fill', (d, i) => {
+                if (i > 26) {
+                    return 'white'
+                }
+            })
+            .attr('font-size', (d, i) => {
+                if (i >= 40) {
+                    return 16
+                }
+                return 12
+            })
+            .attr('font-weight', 'bold')
+            .attr('text-anchor', (d, i) => (i <= 26) ? 'start' : 'middle')
+            .attr('transform', (d, i) => {
+                let r = y(d.value)
+                r = (i <= 26) ? r + 10 : r - 30
+                let startAngle = x(d.name)
+                let endAngle = x(d.name) + x.bandwidth() / 2
+                let angle = 180 * endAngle / Math.PI
+                if (i >= 40) {
+                    return `rotate(${angle},${r* Math.sin(endAngle)} ${-r* Math.cos(endAngle)})`
+                }
+                if (i <= 26) {
+                    return `rotate(${angle-90},${r* Math.sin(endAngle)} ${-r* Math.cos(endAngle)})`
+                }
+
+            })
+            .call(text => text.append('tspan')
+                .text((d, i) => {
+                    if (d.death !== 0) {
+                        return (i <= 26) ? `${d.value}例 ${d.name}(死亡${d.death}例)` : `${d.name}`
+                    } else {
+                        return (i <= 26) ? `${d.value}例 ${d.name}` : `${d.name}`
+                    }
+                })
+                .attr('dx', (d, i) => (i <= 26) ? 0 : (i < 33) ? 10 :(i < 36) ? 30: (i < 40) ? 20 : 0)
+            )
+            .call(text => text.append('tspan')
+                .text((d, i) => {
+                    return (i <= 26) ? `` : `${d.value}例`
+                })
+                .attr('dy', (d, i) => (i < 33) ? -14 : (i < 36) ? 12 :(i < 40) ? 20 : 26)
+                .attr('dx', (d, i) => (i < 33) ? -14 : (i < 36) ? 6 :(i < 40) ? -10 : -48)
+            )
+            .call(text => text.append('tspan')
+                .text((d, i) => {
+                    if (d.death !== 0) {
+                        return (i <= 26) ? `` : `死亡${d.death}例`
+                    }
+                })
+                .attr('dy', (d, i) => (i < 33) ? -14 : (i < 36) ? -2: (i < 40) ? 16 : 26)
+                .attr('dx', (d, i) => (i < 33) ? -14 : (i < 36) ? 10 : (i < 40) ? -10 : -48)
+                .attr('font-weight', 'normal')
+                .attr('font-size', '10')
+            )
+
+        //添加两个透明的圆
+        g.append('circle')
+            .attr('r', innerRadius + 25)
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('fill', 'rgba(255,255,255,0.2)')
+
+        g.append('circle')
+            .attr('r', innerRadius + 40)
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('fill', 'rgba(255,255,255,0.2)')
+    </script>
+</body>
+
+</html>

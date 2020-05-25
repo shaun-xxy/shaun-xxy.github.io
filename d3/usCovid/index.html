@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <script>
+        const width = document.body.clientWidth;
+        const height = document.body.clientHeight;
+        const margin = {
+            top: 60,
+            left: 60,
+            bottom: 400,
+            right: 100
+        }
+        let svg = d3.select('body')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .attr('viewBox', [0, 0, 975, 610]);
+
+        async function drawUSA() {
+            let us = await d3.json('./us.json');
+            let usCovids = await d3.csv('./us-counties.csv');
+            const path = d3.geoPath();
+            const delay = d3.scaleTime()
+                .domain([new Date(usCovids[0].date), new Date(usCovids[usCovids.length - 1].date)])
+                .range([0, 50000]);
+            const radius = d3.scaleSqrt().domain([0, d3.max(usCovids.filter(d => d.fips), d => +d.cases)]).range([0,
+                50
+            ])
+            // 数据由远到近排序
+            usCovids.sort((a, b) => new Date(a.date) - new Date(b.date))
+            //绘制基础美国地图
+            svg.append('g')
+                .attr('class', 'land')
+                .append("path")
+                .datum(topojson.feature(us, us.objects.counties))
+                .attr("fill", "#ddd")
+                .attr("d", path);
+            //绘制州的分界线
+            svg.append("g")
+                .attr("class", "border")
+                .append("path")
+                .datum(topojson.mesh(us, us.objects.states, (a, b) => a !== b))
+                .attr("fill", "none")
+                .attr("stroke", "#777")
+                .attr("stroke-linejoin", "round")
+                .attr("d", path);
+            //圆点
+            let circles = svg.append("g")
+                .attr("class", "circles")
+                .attr("fill", "rgb(232, 104, 74)")
+                .attr("stroke", "rgb(232, 104, 74)");
+
+            //日期标签
+            let dateLabel = svg.append("g")
+                .attr("class", "date")
+                .attr("transform", "translate(600,100)")
+
+            let nestCovids = d3.nest().key(t => t["date"]).entries(usCovids)
+
+
+            for (let nestCovid of nestCovids) {
+                let date = nestCovid.key;
+                let dateData = nestCovid.values;
+                d3.timeout(() => {
+                    circles.selectAll('circle')
+                        .data(topojson.feature(us, us.objects.counties).features)
+                        .join('circle')
+                        .attr('transform', d => `translate(${path.centroid(d)})`)
+                        .attr('r', function () {
+                            return this.r.baseVal.value
+                        })
+                        .style('fill-opacity', '0.2')
+                        .style('stroke-opacity', '1')
+                        .transition()
+                        .attr('r', d => {
+                            let countiesCases = dateData.filter(item => item.fips === d.id);
+                            return countiesCases.length === 0 ? 0 : radius(+countiesCases[0].cases);
+                        })
+
+                    dateLabel.selectAll('text')
+                        .data([date])
+                        .join('text')
+                        .transition()
+                        .text(date)
+                        .style('font-size', '40')
+                        .style('font-weight', 'bold')
+
+                }, delay(new Date(date)))
+            }
+
+        }
+
+        drawUSA()
+    </script>
+</body>
+
+</html>
