@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全球疫情态势</title>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="./d3.v5.min.js"></script>
+    <script>
+        //获取body标签可见区域的大小
+        const width = document.body.clientWidth;
+        const height = document.body.clientHeight;
+
+        //添加画布，大小占满body
+        const svg = d3.select('body')
+            .append('svg')
+            .attr("width", width)
+            .attr("height", height);
+        //请求地图数据
+        d3.json('./data/world.json').then(worldGeo => {
+            //去掉南极洲
+            let worldGeoFeatures = worldGeo.features.filter(d => d.properties.name!=='Antarctica')
+            //去掉南极洲后的世界json数据
+            let worldNoATAGeo = {
+                type: "FeatureCollection",
+                features: worldGeoFeatures
+            }
+            //地图投影-墨卡托投影
+            let projection = d3.geoMercator().fitExtent([
+                [0, 100],
+                [width*0.9, height - 100]
+            ], worldNoATAGeo);
+            //地理路径生成器
+            let path = d3.geoPath(projection);
+            //绘制世界地图
+            let worldBase = svg.append('g')
+                .attr('class', 'worldMap')
+                .selectAll('path')
+                .data(worldGeoFeatures)
+                .join('path')
+                .attr('d', d => path(d))
+                .attr('fill', '#BBB')
+                .attr('stroke', 'white')
+            //获取全球疫情数据，并根据数据着色
+            d3.json('./by_country.json').then(ncovData => {
+                let level = ['1-9人', '10-99人', '100-499人', '500-999人', '1000-9999人', '10000人及以上']
+                //颜色比例尺
+                const red = d3.scaleOrdinal(d3.schemeReds[6]).domain(level)
+                worldBase.style('fill', d => {
+                    let name = d.properties.name;           
+                    let countryJson = ncovData.filter(item => item.countryEnglishName == name)
+                    let count = (countryJson.length > 0) ? countryJson[0].confirmedCount : 0
+                    let levelIndex = count < 10 ? 0 : count < 100 ? 1 : count < 500 ? 2 :
+                        count < 1000 ? 3 : count < 10000 ? 4 : 5
+                    return red(level[levelIndex])
+                })
+                //增加图例
+                let legend = svg.append('g')
+                .attr('class','legend')
+
+                legend.selectAll('rect')
+                .data(level)
+                .join('rect')
+                .attr('width',100)
+                .attr('height',80)
+                .attr('x',width*0.9)
+                .attr('y',(d,i)=>(height*0.5)+(i+1)*120)
+                .style('fill',d=>red(d))
+                
+                legend.selectAll('text')
+                .data(level)
+                .join('text')
+                .attr('x',width*0.9+120)
+                .attr('y',(d,i)=>(height*0.5+40)+(i+1)*120)
+                .text(d=>d)
+                .attr('text-anchor','start')
+                .attr('font-size','40')
+               
+            })
+        })
+    </script>
+
+</body>
+
+</html>
