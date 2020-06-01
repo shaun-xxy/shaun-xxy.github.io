@@ -16,7 +16,7 @@
 </head>
 
 <body>
-    <script src="./d3.v5.min.js"></script>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
     <script>
         //获取body标签可见区域的大小
         const width = document.body.clientWidth;
@@ -28,7 +28,7 @@
             .attr("width", width)
             .attr("height", height);
         //请求地图数据
-        d3.json('./data/world.json').then(worldGeo => {
+        d3.json('./world.json').then(worldGeo => {
             //去掉南极洲
             let worldGeoFeatures = worldGeo.features.filter(d => d.properties.name!=='Antarctica')
             //去掉南极洲后的世界json数据
