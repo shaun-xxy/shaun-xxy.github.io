@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3绘制流程图</title>
+    <style>
+        .tooltip {
+            position: absolute;
+            font-size: 12px;
+            text-align: center;
+            background-color: white;
+            border-radius: 3px;
+            box-shadow: rgb(174, 174, 174) 0px 0px 10px;
+            cursor: pointer;
+            display: inline-block;
+            padding:10px;
+        }
+
+        .tooltip>div {
+            padding: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <svg width="960" height="600"></svg>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://dagrejs.github.io/project/dagre-d3/latest/dagre-d3.min.js"></script>
+    <script>
+        let dataset = {
+            nodes: [{
+                    id: 0,
+                    label: "流动人员",
+                    shape: "rect"
+                },
+                {
+                    id: 1,
+                    label: "安全筛查",
+                    shape: "rect"
+                },
+                {
+                    id: 2,
+                    label: "热像仪人体测温筛查",
+                    shape: "diamond"
+                },
+                {
+                    id: 3,
+                    label: "人工复测",
+                    shape: "diamond"
+                },
+                {
+                    id: 4,
+                    label: "快速通过",
+                    shape: "rect"
+                },
+                {
+                    id: 5,
+                    label: "紧急处理",
+                    shape: "rect"
+                }
+            ],
+            edges: [{
+                    source: 0,
+                    target: 1,
+                    label: ""
+                },
+                {
+                    source: 1,
+                    target: 2,
+                    label: ""
+                },
+                {
+                    source: 2,
+                    target: 4,
+                    label: "正常"
+                },
+                {
+                    source: 2,
+                    target: 3,
+                    label: "不正常"
+                },
+                {
+                    source: 3,
+                    target: 5,
+                    label: "不正常"
+                },
+                {
+                    source: 3,
+                    target: 4,
+                    label: "正常"
+                }
+            ]
+        }
+        // 创建 graph 对象
+        let g = new dagreD3.graphlib.Graph();
+        g.setGraph({
+            rankdir: 'LR',
+            align: 'DL',
+            nodesep: 100,
+            edgesep: 100,
+            ranksep: 50,
+            marginx: 50,
+            marginy: 100,
+        });
+        dataset.nodes.forEach(item => {
+            g.setNode(item.id, {
+                //节点标签
+                label: item.label,
+                //节点形状
+                shape: item.shape,
+                //节点样式
+                style: "fill:#faf;stroke:#faf",
+                //节点标签样式
+                labelStyle: "fill:#afa"
+            })
+        })
+        dataset.edges.forEach(item => {
+            g.setEdge(item.source, item.target, {
+                //边标签
+                label: item.label,
+                //边样式
+                style: "fill:#fff;stroke:#afa;stroke-width:2px",
+                labelStyle: "fill:#1890ff",
+                arrowhead: "vee",
+                arrowheadStyle: "fill:#f66"
+            })
+        })
+        // 创建渲染器
+        let render = new dagreD3.render();
+
+        // 选择 svg 并添加一个g元素作为绘图容器.
+        let svg = d3.select('svg')
+        let svgGroup = svg.append('g');
+
+        // 在绘图容器上运行渲染器生成流程图.
+        render(svgGroup, g);
+
+        // 建立拖拽缩放
+        let zoom = d3.zoom()
+            .on("zoom", function () {
+                svgGroup.attr("transform", d3.event.transform);
+            });
+        svg.call(zoom);
+
+        var styleTooltip = function (name) {
+            return "<p class='name'>" + name + "</p>";
+        };
+
+        //创建提示框
+        function createTooltip() {
+            return d3.select('body')
+                .append('div')
+                .classed('tooltip', true)
+                .style('opacity', 0)
+                .style('display', 'none');
+        };
+        let tooltip = createTooltip();
+        //tooltip显示
+        function tipVisible(textContent) {
+            tooltip.transition()
+                .duration(400)
+                .style('opacity', 0.9)
+                .style('display', 'block');
+            tooltip.html(textContent)
+                .style('left', (d3.event.pageX + 15) + 'px')
+                .style('top', (d3.event.pageY + 15) + 'px');
+        }
+        //tooltip隐藏
+        function tipHidden() {
+            tooltip.transition()
+                .duration(400)
+                .style('opacity', 0)
+                .style('display', 'none');
+        }
+
+        //鼠标悬停显示隐藏tooltip
+        svgGroup.selectAll("g.node")
+        .on("mouseover", function (v) {
+            tipVisible(g.node(v).label);
+        })
+        .on("mouseout", function (v) {
+            tipHidden();
+        })
+
+        // Center the graph
+        var xCenterOffset = (svg.attr('width') - g.graph().width) / 2;
+        svgGroup.attr('transform', 'translate(' + xCenterOffset + ', 20)');
+        svg.attr('height', g.graph().height + 40);
+    </script>
+</body>
+
+</html>
