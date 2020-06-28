@@ -13,3 +13,5 @@
 6.[全球疫情态势地图](https://xuxiaoyang.github.io/d3/world/index.html)
 
 7.[流程图](https://xuxiaoyang.github.io/d3/flowChart/index.html)
+
+8.[柱状折线图](https://xuxiaoyang.github.io/d3/barLine/index.html)

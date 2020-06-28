@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D3双y轴柱状折线图</title>
+</head>
+
+<body>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script>
+    const xData = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    const y1Data = [2.0, 4.9, 7.0, 23.2, 25.6, 76.7, 135.6, 162.2, 32.6, 20.0, 6.4, 3.3];
+    const y2Data = [2.0, 2.2, 3.3, 4.5, 6.3, 10.2, 20.3, 23.4, 23.0, 16.5, 12.0, 6.2];
+
+    const height = 600,
+      width = 600;
+    const margin = {
+      top: 60,
+      right: 60,
+      bottom: 60,
+      left: 60
+    }
+
+    const y1Color = '#16A37E'
+    const y2Color = '#DE9111'
+    //画布
+    let svg = d3.select('body')
+      .append('svg')
+      .attr('height', height)
+      .attr('width', width);
+
+    //比例尺-x轴，y1轴，y2轴
+    let xScale = d3.scaleBand().domain(xData).range([margin.left, width - margin.right]).padding(0.1);
+    let y1Scale = d3.scaleLinear().domain([0, 250]).range([height - margin.bottom, margin.top]);
+    let y2Scale = d3.scaleLinear().domain([0, 25]).range([height - margin.bottom, margin.top]);
+
+    //定义坐标轴
+    let xAxis = d3.axisBottom(xScale);
+    let y1Axis = d3.axisLeft(y1Scale).ticks(5).tickFormat(d => d + "ml")
+    let y2Axis = d3.axisRight(y2Scale).ticks(5).tickFormat(d => d + "°C");
+
+    //添加坐标轴
+    svg.append('g').classed('xAxis', true).attr('transform', `translate(0,${height - margin.bottom})`)
+      .call(xAxis)
+    svg.append('g').classed('yAxis', true).attr('transform', `translate(${margin.left},0)`)
+       .call(y1Axis)
+       .call(g => g.append("text")
+                    .attr("x",0)
+                    .attr("y", margin.top-10)
+                    .attr("text-anchor", "middle")
+                    .attr('fill','#000')
+                    .text('降水量'))
+    svg.append('g').classed('yAxis', true).attr('transform', `translate(${width- margin.right},0)`)
+       .call(y2Axis)
+       .call(g => g.append("text")
+                    .attr("x",0)
+                    .attr("y", margin.top-10)
+                    .attr("text-anchor", "middle")
+                    .attr('fill','#000')
+                    .text('温度'))
+
+    //柱状图
+    svg.append('g').classed('bar',true).selectAll('rect').data(y1Data).join('rect')
+      .attr('height',d=>height-margin.bottom-y1Scale(d))
+      .attr('width',d=>xScale.bandwidth())
+      .attr('x',(d,i)=>xScale(xData[i]))
+      .attr('y',d=>y1Scale(d))
+      .attr('fill',y1Color)
+    
+    //折线图
+   svg.append('g').classed('line',true).datum(y2Data).join('g')
+      .append('path')
+      .attr("d",d3.line().x((d,i)=>xScale(xData[i])).y(d=>y2Scale(d)))
+      .attr('fill','none')
+      .attr('stroke',y2Color)
+      .attr('stroke-width',2)
+
+    //图例
+    let legend =  svg.append('g').classed('legend',true).attr('transform',`translate(${(width-margin.left-margin.right)/2},${margin.top})`)
+                  .attr('width',200)
+                  .attr('height',20)
+    let water = legend.append('g').classed('water',true)
+    water.append("rect")
+        .attr("stroke-width", 2)
+        .attr("fill", y1Color)
+        .attr("stroke", y1Color)
+        .attr("width", 16)
+        .attr("height", 10)
+        .attr('rx',2)
+        .attr('ry',2)
+      
+    water.append("text")
+        .attr("font-size", "0.75em")
+        .attr("text-anchor", "start")
+        .attr("dy", 10)
+        .attr("dx", 18)
+        .text("降水量");
+
+    let temperature = legend.append('g').classed('temperature',true)
+                      .attr('transform',`translate(60,0)`)
+    temperature.append('line')
+        .attr('x1',0)
+        .attr('y1',0)
+        .attr('x2',16)
+        .attr('y2',0)
+        .attr('transform',`translate(0,5)`)
+        .attr('stroke',y2Color)
+        .attr('stroke-width',2)
+    temperature.append("text")
+        .attr("font-size", "0.75em")
+        .attr("text-anchor", "start")
+        .attr("dy", 10)
+        .attr("dx", 18)
+        .text("温度");
+
+  </script>
+</body>
+
+</html>
